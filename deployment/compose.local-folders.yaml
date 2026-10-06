@@ -1,4 +1,4 @@
-# Opt-in, read-only mount. The only permitted host document root is E:/资源.
+# Opt-in, read-only mount. Choose one host directory in .env.docker.
 services:
   backend:
     environment:
@@ -6,7 +6,7 @@ services:
       KNOWLEDGE_FOLDER_ROOTS: /documents
     volumes:
       - type: bind
-        source: E:/资源
+        source: ${LOCAL_DOCUMENTS_DIR:-E:/资源}
         target: /documents
         read_only: true
         bind:

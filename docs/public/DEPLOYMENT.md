@@ -51,7 +51,18 @@ docker compose --env-file .env.docker --profile parser up --build -d
 
 ## 资料目录
 
-默认只能使用上传资料。Windows 可显式加载 `deployment/compose.local-folders.yaml`，它仅绑定 `E:/资源`，容器路径为 `/documents`，且为只读。路径不存在会报错，不会自动创建。文件夹导入会读取所选目录内的资料，向量化可能调用所配置的外部模型。
+默认只能使用上传资料。需要绑定目录时，在 `.env.docker` 中设置 `LOCAL_DOCUMENTS_DIR`，再显式加载 `deployment/compose.local-folders.yaml`。Windows 可选择任意盘符中的资料目录，Linux / macOS 使用对应的绝对路径：
+
+```dotenv
+# Windows 示例（不要绑定整个磁盘）
+LOCAL_DOCUMENTS_DIR=D:/documents
+# Linux 示例：LOCAL_DOCUMENTS_DIR=/srv/documents
+# macOS 示例：LOCAL_DOCUMENTS_DIR=/Users/yourname/Documents/library
+```
+
+未设置或设为空时沿用 `E:/资源`。容器路径统一为 `/documents`，后端允许访问的根目录也限定为 `/documents`；更换盘符不需要修改 Java 代码。挂载为只读，路径不存在会报错，不会自动创建。Windows 推荐使用正斜杠，路径含空格时可按 dotenv 语法加引号。
+
+文件夹导入会读取所选目录内的资料，向量化可能调用所配置的外部模型。更换目录前应停止旧目录的导入任务；已导入的资料副本与索引不会随挂载路径变化自动删除。默认示例源于开发环境，部署者应显式选择自己愿意交给应用处理的资料目录。
 
 ## 停止、更新与备份
 

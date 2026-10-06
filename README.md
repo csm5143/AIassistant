@@ -88,7 +88,14 @@ docker compose --env-file .env.docker --profile parser up --build -d
 
 ### 可选：绑定本机资料目录
 
-仅提供对 **`E:\资源`** 的只读绑定配置，需要主动启用；不会绑定其他个人目录。
+支持 Windows 任意盘符，以及 Linux / macOS 的本机目录。在 `.env.docker` 中设置要绑定的**一个资料目录**，例如：
+
+```dotenv
+# Windows 示例；也可使用 Linux 的 /srv/documents 等绝对路径
+LOCAL_DOCUMENTS_DIR=D:/documents
+```
+
+默认值为 `E:/资源`，可按自己的环境修改。使用 Windows 路径时推荐正斜杠。目录需已存在，且绑定始终为只读；只有执行下方命令才启用，不会自动开放整个磁盘或其他目录。
 
 ```bash
 docker compose --env-file .env.docker -f compose.yaml -f deployment/compose.local-folders.yaml up -d
