@@ -1,0 +1,49 @@
+# Public container profile. The local development profile is not included in images.
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:8080,http://127.0.0.1:8080}
+spring:
+  datasource:
+    url: jdbc:mysql://mysql:3306/aiassitant?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+  datasource-pg:
+    url: jdbc:postgresql://postgres:5432/aivectors
+  data:
+    redis:
+      host: redis
+ai:
+  chat:
+    runs-dir: /app/data/chat-runs
+  documentqa:
+    jobs-dir: /app/data/document-jobs
+  tools:
+    storage-dir: /app/data/tools
+  knowledge:
+    storage-dir: /app/data/knowledge
+    local-folders-enabled: ${KNOWLEDGE_LOCAL_FOLDERS_ENABLED:false}
+    folder-roots: ${KNOWLEDGE_FOLDER_ROOTS:}
+  pdf:
+    runtime-dir: /app/data/pdf-runtime
+  search:
+    exa:
+      enabled: ${EXA_ENABLED:false}
+    mcporter:
+      config-path: ""
+  mcp:
+    auto-discover: false
+logging:
+  level:
+    com.aiproject: INFO
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+knife4j:
+  enable: false
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

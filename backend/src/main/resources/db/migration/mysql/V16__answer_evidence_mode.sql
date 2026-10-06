@@ -1,0 +1,1 @@
+ALTER TABLE chat_session ADD COLUMN answer_mode VARCHAR(16) NOT NULL DEFAULT 'AUTO';

@@ -1,0 +1,46 @@
+name: Source checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+      - run: mvn -B test
+        working-directory: backend
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: user-frontend/package-lock.json
+      - run: npm ci
+        working-directory: user-frontend
+      - run: npm run build
+        working-directory: user-frontend
+      - run: node --test tests/*.cjs
+        working-directory: user-frontend
+  publication-and-parser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python scripts/check-publication.py --staged
+      - run: python -m unittest test_text_cleanup
+        working-directory: deployment/pdf-parser
+      - run: python deployment/init-env.py
+      - run: docker compose --env-file .env.docker --profile parser config --quiet

@@ -1,0 +1,13 @@
+# Opt-in, read-only mount. The only permitted host document root is E:/资源.
+services:
+  backend:
+    environment:
+      KNOWLEDGE_LOCAL_FOLDERS_ENABLED: "true"
+      KNOWLEDGE_FOLDER_ROOTS: /documents
+    volumes:
+      - type: bind
+        source: E:/资源
+        target: /documents
+        read_only: true
+        bind:
+          create_host_path: false

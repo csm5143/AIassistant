@@ -1,0 +1,8 @@
+* text=auto eol=lf
+/mvnw text eol=lf
+*.cmd text eol=crlf
+*.sh text eol=lf
+*.py text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+Dockerfile text eol=lf

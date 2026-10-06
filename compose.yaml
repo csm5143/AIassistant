@@ -1,0 +1,133 @@
+name: aiassistant-stack
+services:
+  web:
+    build:
+      context: .
+      dockerfile: user-frontend/Dockerfile
+    ports:
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--Xms256m -Xmx1536m}
+      MYSQL_HOST: mysql
+      MYSQL_USER: aiassistant
+      MYSQL_PWD: ${MYSQL_PASSWORD:?Run deployment/init-env.py first}
+      REDIS_HOST: redis
+      REDIS_PWD: ${REDIS_PASSWORD:?Run deployment/init-env.py first}
+      PG_HOST: postgres
+      PG_USER: aiassistant
+      PG_PWD: ${PG_PASSWORD:?Run deployment/init-env.py first}
+      JWT_SECRET: ${JWT_SECRET:?Run deployment/init-env.py first}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Run deployment/init-env.py first}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:?Run deployment/init-env.py first}
+      DEEPSEEK_KEY: ${DEEPSEEK_KEY:-}
+      EMB_KEY: ${EMB_KEY:-}
+      EMB_BASE_URL: ${EMB_BASE_URL:-https://api.siliconflow.cn/v1}
+      PDF_PARSER_URL: http://pdf-parser:8741
+      PDF_PARSER_TOKEN: ${PDF_PARSER_TOKEN:?Run deployment/init-env.py first}
+      EXA_ENABLED: ${EXA_ENABLED:-false}
+      CORS_ALLOWED_ORIGINS: http://localhost:${WEB_PORT:-8080},http://127.0.0.1:${WEB_PORT:-8080}
+      TZ: Asia/Shanghai
+    volumes:
+      - runtime-data:/app/data
+      - uploads-data:/app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8740/api/actuator/health"]
+      interval: 20s
+      timeout: 5s
+      start_period: 120s
+      retries: 8
+  mysql:
+    image: mysql:8.0
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci", "--ngram-token-size=2"]
+    environment:
+      MYSQL_DATABASE: aiassitant
+      MYSQL_USER: aiassistant
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Run deployment/init-env.py first}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Run deployment/init-env.py first}
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql-data:/var/lib/mysql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_PASSWORD\" mysql -h 127.0.0.1 -u aiassistant aiassitant -e 'SELECT 1' >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 12
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: aivectors
+      POSTGRES_USER: aiassistant
+      POSTGRES_PASSWORD: ${PG_PASSWORD:?Run deployment/init-env.py first}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./backend/src/main/resources/db/migration/postgres/V1__init_pgvector.sql:/docker-entrypoint-initdb.d/001-vectors.sql:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aiassistant -d aivectors"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  redis:
+    image: redis:7.4-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Run deployment/init-env.py first}
+    command: ["sh", "-c", "exec redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\""]
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  pdf-parser:
+    profiles: ["parser"]
+    build:
+      context: .
+      dockerfile: deployment/pdf-parser/Dockerfile
+    environment:
+      PDF_PARSER_RUNTIME: /runtime
+      DOCLING_ARTIFACTS_PATH: /models
+      PDF_PARSER_TOKEN: ${PDF_PARSER_TOKEN:?Run deployment/init-env.py first}
+    volumes:
+      - parser-runtime:/runtime
+      - parser-models:/models
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,urllib.request; r=urllib.request.Request('http://127.0.0.1:8741/health',headers={'X-Parser-Token':os.environ['PDF_PARSER_TOKEN']}); urllib.request.urlopen(r,timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      start_period: 600s
+      retries: 10
+volumes:
+  runtime-data:
+  uploads-data:
+  mysql-data:
+  postgres-data:
+  redis-data:
+  parser-runtime:
+  parser-models:
